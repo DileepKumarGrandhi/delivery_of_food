@@ -1,26 +1,36 @@
 {
   "project_info": {
-    "project_number": "896307906149",
-    "project_id": "flutterfirebase-ef2a5",
-    "storage_bucket": "flutterfirebase-ef2a5.firebasestorage.app"
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "project_id": "YOUR_PROJECT_ID",
+    "storage_bucket": "YOUR_STORAGE_BUCKET"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:896307906149:android:b7df9b7ead429055f1a88c",
+        "mobilesdk_app_id": "YOUR_MOBILE_SDK_APP_ID",
         "android_client_info": {
-          "package_name": "com.example.deliveryoffood"
+          "package_name": "com.example.delivery_of_food"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "YOUR_CLIENT_ID",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBzmbXe2dqtPVgAqelrTQ9hNJHLiFp1WQE"
+          "current_key": "YOUR_FIREBASE_API_KEY_HERE"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "YOUR_CLIENT_ID",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

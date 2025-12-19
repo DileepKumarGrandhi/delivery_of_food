@@ -1,235 +1,191 @@
-import 'package:deliveryoffood/pages/bottomnav.dart';
-import 'package:deliveryoffood/pages/login.dart';
-import 'package:deliveryoffood/services/database.dart';
-import 'package:deliveryoffood/widget/widget_support.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/database.dart';
+import 'login.dart';
 
-
-class Signup extends StatefulWidget {
-  const Signup({super.key});
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({Key? key}) : super(key: key);
 
   @override
-  State<Signup> createState() => _SignupState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignupState extends State<Signup> {
-  String email = "", password = "", name = "";
-  TextEditingController namecontroller = TextEditingController();
-  TextEditingController passwordcontroller = TextEditingController();
-  TextEditingController mailcontroller = TextEditingController();
+class _SignUpPageState extends State<SignUpPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _databaseService = DatabaseService();
+  bool _isLoading = false;
 
-  final _formkey = GlobalKey<FormState>();
-  final DatabaseService _databaseService = DatabaseService(); // Initialize the database service
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
-  registration() async {
-    if (password.isNotEmpty) {
+  Future<void> _signUp() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
       try {
-        UserCredential userCredential = await FirebaseAuth.instance
+        final email = _emailController.text.trim();
+        final password = _passwordController.text.trim();
+        final name = _nameController.text.trim();
+
+        // Create user with email and password
+        final userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(email: email, password: password);
 
-        // Save user data to Firestore
-        await _databaseService.saveUserData(userCredential.user!.uid, email, name, password);
+        // Save user data to Firestore (without password)
+        await _databaseService.saveUserData(
+          userCredential.user!.uid,
+          email,
+          name,
+        );
 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          backgroundColor: Colors.redAccent,
-          content: Text(
-            "Registered Successfully",
-            style: TextStyle(fontSize: 20.0),
-          ),
-        ));
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => Bottomnav()));
-      } on FirebaseException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Account created successfully!')),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        String message = 'An error occurred';
         if (e.code == 'weak-password') {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              backgroundColor: Colors.orangeAccent,
-              content: Text(
-                "Password Provided is too Weak",
-                style: TextStyle(fontSize: 18.0),
-              )));
-        } else if (e.code == "email-already-in-use") {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              backgroundColor: Colors.orangeAccent,
-              content: Text(
-                "Account Already exists",
-                style: TextStyle(fontSize: 18.0),
-              )));
+          message = 'The password provided is too weak.';
+        } else if (e.code == 'email-already-in-use') {
+          message = 'An account already exists for that email.';
+        } else if (e.code == 'invalid-email') {
+          message = 'The email address is not valid.';
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${e.toString()}')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
         }
       }
     }
   }
 
-  // Regular expressions for validation
-  final RegExp emailRegex = RegExp(r"^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$");
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Sign Up'),
+      ),
       body: SingleChildScrollView(
-        child: Container(
-          child: Stack(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height / 2.5,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFff5c30),
-                      Color(0xFFe74b1a),
-                    ],
-                  ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  border: OutlineInputBorder(),
                 ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return null;
+                },
               ),
-              Container(
-                margin: EdgeInsets.only(top: MediaQuery.of(context).size.height / 3),
-                height: MediaQuery.of(context).size.height / 2,
-                width: MediaQuery.of(context).size.width,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(40),
-                    topRight: Radius.circular(40),
-                  ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
                 ),
-                child: Text(""),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
               ),
-              Container(
-                margin: EdgeInsets.only(top: 50.0, left: 20.0, right: 20.0),
-                child: Column(
-                  children: [
-                    Center(
-                      child: Image.asset(
-                        "assets/images/logo2.png",
-                        width: MediaQuery.of(context).size.width / 1.5,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    SizedBox(height: 40.0),
-                    Material(
-                      elevation: 5.0,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: EdgeInsets.only(left: 20.0, right: 20),
-                        width: MediaQuery.of(context).size.width,
-                        height: MediaQuery.of(context).size.height / 2.0,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Form(
-                          key: _formkey,
-                          child: Column(
-                            children: [
-                              SizedBox(height: 30.0),
-                              Text(
-                                "Sign up",
-                                style: Appwidget.HeadlineTextFieldStyle(),
-                              ),
-                              SizedBox(height: 30.0),
-                              TextFormField(
-                                controller: namecontroller,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please Enter Name';
-                                  }
-                                  return null;
-                                },
-                                decoration: InputDecoration(
-                                  hintText: 'Username',
-                                  hintStyle: Appwidget.SemiBoldTextFieldStyle(),
-                                  prefixIcon: Icon(Icons.person_outline),
-                                ),
-                              ),
-                              SizedBox(height: 30.0),
-                              TextFormField(
-                                controller: mailcontroller,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Enter email';
-                                  } else if (!emailRegex.hasMatch(value)) {
-                                    return 'Enter a valid email with "@" and a domain';
-                                  }
-                                  return null;
-                                },
-                                decoration: InputDecoration(
-                                  hintText: 'Email',
-                                  hintStyle: Appwidget.SemiBoldTextFieldStyle(),
-                                  prefixIcon: Icon(Icons.email_outlined),
-                                ),
-                              ),
-                              SizedBox(height: 30.0),
-                              TextFormField(
-                                controller: passwordcontroller,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Password is required';
-                                  }
-                                  return null;
-                                },
-                                obscureText: true,
-                                decoration: InputDecoration(
-                                  hintText: 'Password',
-                                  hintStyle: Appwidget.SemiBoldTextFieldStyle(),
-                                  prefixIcon: Icon(Icons.password_outlined),
-                                ),
-                              ),
-                              SizedBox(height: 60.0),
-                              GestureDetector(
-                                onTap: () {
-                                  if (_formkey.currentState!.validate()) {
-                                    setState(() {
-                                      email = mailcontroller.text;
-                                      name = namecontroller.text;
-                                      password = passwordcontroller.text;
-                                    });
-                                    registration();
-                                  }
-                                },
-                                child: Material(
-                                  elevation: 5.0,
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                                    width: 200,
-                                    decoration: BoxDecoration(
-                                      color: Color(0Xffff5722),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        "SIGN UP",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18.0,
-                                          fontFamily: 'Poppins1',
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 60.0),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) => logIn()));
-                      },
-                      child: Text(
-                        "Already have an account? Login",
-                        style: Appwidget.SemiBoldTextFieldStyle(),
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
                 ),
+                obscureText: true,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a password';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _confirmPasswordController,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm Password',
+                  border: OutlineInputBorder(),
+                ),
+                obscureText: true,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please confirm your password';
+                  }
+                  if (value != _passwordController.text) {
+                    return 'Passwords do not match';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _signUp,
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Sign Up'),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                  );
+                },
+                child: const Text('Already have an account? Login'),
               ),
             ],
           ),
